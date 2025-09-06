@@ -13,17 +13,25 @@ load_dotenv()
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
 def handler(request):
-    # Log request for debugging
-    print(f"Received request: {request}")
+    # Log request
+    print(f"Request received: {request}")
 
-    # Parse query params (Vercel sends as dict)
-    prompt = request.get('query', {}).get('prompt', '')
-    if not prompt:
-        print("Error: Missing prompt parameter")
+    # Parse query params
+    try:
+        prompt = request.get('query', {}).get('prompt', '')
+        if not prompt:
+            print("Error: Missing prompt")
+            return {
+                'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
+                'body': json.dumps({'error': 'Missing prompt parameter'})
+            }
+    except Exception as e:
+        print(f"Error parsing request: {str(e)}")
         return {
             'statusCode': 400,
             'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': 'Missing prompt parameter'})
+            'body': json.dumps({'error': f'Invalid request: {str(e)}'})
         }
 
     # Verify API key
@@ -36,10 +44,10 @@ def handler(request):
         }
 
     try:
-        # Step 1: Use Groq to generate Mermaid flowchart code (Diagram Architect agent)
+        # Step 1: Generate Mermaid flowchart code with Groq
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
-            model="llama3-8b-8192",  # Updated to supported Groq model
+            model="llama3-8b-8192",  # Confirmed Groq model
             messages=[
                 {
                     "role": "user",
@@ -47,35 +55,33 @@ def handler(request):
                 }
             ],
             temperature=1,
-            max_completion_tokens=8192,
+            max_tokens=8192,  # Updated to max_tokens (Groq standard)
             top_p=1,
-            reasoning_effort="medium",
-            stream=False,  # Non-streaming for API simplicity
+            stream=False,
             stop=None
         )
 
-        # Extract Mermaid code with robust parsing
+        # Extract Mermaid code
         mermaid_code = completion.choices[0].message.content.strip()
         print(f"Raw Groq output: {mermaid_code}")
         if '```mermaid' in mermaid_code:
             mermaid_code = mermaid_code.split('```mermaid')[1].split('```')[0].strip()
         elif 'graph TD' in mermaid_code or 'graph LR' in mermaid_code:
-            # Fallback: Extract code if backticks are missing
             lines = mermaid_code.split('\n')
             mermaid_code = '\n'.join(line for line in lines if 'graph TD' in line or 'graph LR' in line or '-->' in line or '[' in line).strip()
         else:
             print("Error: Invalid Mermaid output")
-            raise ValueError("Invalid Mermaid output from Groq")
+            raise ValueError("Invalid or empty Mermaid code from Groq")
 
         if not mermaid_code:
             print("Error: Empty Mermaid code")
             raise ValueError("Empty Mermaid code generated")
 
-        # Step 2: Render Mermaid to PNG using Kroki.io (free, no key)
+        # Step 2: Render Mermaid to PNG with Kroki
         kroki_url = "https://kroki.io"
         response = requests.post(
             f"{kroki_url}/mermaid/png",
-            data=mermaid_code,
+            data=mermaid_code.encode('utf-8'),
             headers={'Content-Type': 'text/plain'}
         )
         print(f"Kroki response status: {response.status_code}")
@@ -84,7 +90,7 @@ def handler(request):
             raise ValueError(f"Kroki rendering failed: {response.text}")
         image_bytes = response.content
 
-        # Step 3: Upload to ImgBB (no API key needed)
+        # Step 3: Upload to ImgBB
         imgbb_url = "https://api.imgbb.com/1/upload"
         image_b64 = base64.b64encode(image_bytes).decode('utf-8')
         payload = {
@@ -99,7 +105,7 @@ def handler(request):
         imgbb_data = imgbb_response.json()
         image_url = imgbb_data['data']['url']
 
-        # Step 4: Return JSON with image link
+        # Step 4: Return JSON
         print(f"Success: Image URL: {image_url}")
         return {
             'statusCode': 200,
@@ -114,11 +120,3 @@ def handler(request):
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': f"Server error: {str(e)}"})
         }
-
-# For local testing
-if __name__ == "__main__":
-    class MockRequest:
-        def get(self, key):
-            if key == 'query':
-                return {'prompt': 'generate a flowchart for chemistry chemical formulas'}
-    print(json.loads(handler(MockRequest())['body']))
