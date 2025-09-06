@@ -9,24 +9,37 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Env vars (set in Vercel)
+# Env vars (set in Vercel dashboard)
 GROQ_API_KEY = os.getenv('GROQ_API_KEY')
 
 def handler(request):
+    # Log request for debugging
+    print(f"Received request: {request}")
+
     # Parse query params (Vercel sends as dict)
     prompt = request.get('query', {}).get('prompt', '')
     if not prompt:
+        print("Error: Missing prompt parameter")
         return {
             'statusCode': 400,
             'headers': {'Content-Type': 'application/json'},
             'body': json.dumps({'error': 'Missing prompt parameter'})
         }
 
+    # Verify API key
+    if not GROQ_API_KEY:
+        print("Error: GROQ_API_KEY not set")
+        return {
+            'statusCode': 500,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps({'error': 'Server configuration error: Missing API key'})
+        }
+
     try:
         # Step 1: Use Groq to generate Mermaid flowchart code (Diagram Architect agent)
         client = Groq(api_key=GROQ_API_KEY)
         completion = client.chat.completions.create(
-            model="openai/gpt-oss-20b",  # Your specified model
+            model="llama3-8b-8192",  # Updated to supported Groq model
             messages=[
                 {
                     "role": "user",
@@ -41,12 +54,22 @@ def handler(request):
             stop=None
         )
 
-        # Extract Mermaid code
+        # Extract Mermaid code with robust parsing
         mermaid_code = completion.choices[0].message.content.strip()
+        print(f"Raw Groq output: {mermaid_code}")
         if '```mermaid' in mermaid_code:
             mermaid_code = mermaid_code.split('```mermaid')[1].split('```')[0].strip()
+        elif 'graph TD' in mermaid_code or 'graph LR' in mermaid_code:
+            # Fallback: Extract code if backticks are missing
+            lines = mermaid_code.split('\n')
+            mermaid_code = '\n'.join(line for line in lines if 'graph TD' in line or 'graph LR' in line or '-->' in line or '[' in line).strip()
         else:
-            raise ValueError("Invalid Mermaid output")
+            print("Error: Invalid Mermaid output")
+            raise ValueError("Invalid Mermaid output from Groq")
+
+        if not mermaid_code:
+            print("Error: Empty Mermaid code")
+            raise ValueError("Empty Mermaid code generated")
 
         # Step 2: Render Mermaid to PNG using Kroki.io (free, no key)
         kroki_url = "https://kroki.io"
@@ -55,8 +78,10 @@ def handler(request):
             data=mermaid_code,
             headers={'Content-Type': 'text/plain'}
         )
+        print(f"Kroki response status: {response.status_code}")
         if response.status_code != 200:
-            raise ValueError("Kroki rendering failed")
+            print(f"Kroki error: {response.text}")
+            raise ValueError(f"Kroki rendering failed: {response.text}")
         image_bytes = response.content
 
         # Step 3: Upload to ImgBB (no API key needed)
@@ -67,12 +92,15 @@ def handler(request):
             'name': f"flowchart-{uuid.uuid4().hex[:8]}"
         }
         imgbb_response = requests.post(imgbb_url, data=payload)
+        print(f"ImgBB response status: {imgbb_response.status_code}")
         if imgbb_response.status_code != 200:
-            raise ValueError("ImgBB upload failed")
+            print(f"ImgBB error: {imgbb_response.text}")
+            raise ValueError(f"ImgBB upload failed: {imgbb_response.text}")
         imgbb_data = imgbb_response.json()
         image_url = imgbb_data['data']['url']
 
         # Step 4: Return JSON with image link
+        print(f"Success: Image URL: {image_url}")
         return {
             'statusCode': 200,
             'headers': {'Content-Type': 'application/json'},
@@ -80,15 +108,15 @@ def handler(request):
         }
 
     except Exception as e:
+        print(f"Error: {str(e)}")
         return {
             'statusCode': 500,
             'headers': {'Content-Type': 'application/json'},
-            'body': json.dumps({'error': str(e)})
+            'body': json.dumps({'error': f"Server error: {str(e)}"})
         }
 
 # For local testing
 if __name__ == "__main__":
-IBE0
     class MockRequest:
         def get(self, key):
             if key == 'query':
