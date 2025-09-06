@@ -15,8 +15,5 @@
       "src": "/api/generate",
       "dest": "api/generate.py"
     }
-  ],
-  "env": {
-    "GROQ_API_KEY": "@groq_api_key"
-  }
+  ]
 }
