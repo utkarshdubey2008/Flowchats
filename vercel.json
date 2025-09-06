@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/generate.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/generate",
+      "dest": "api/generate.py"
+    },
+    {
+      "src": "/api/generate",
+      "dest": "api/generate.py"
+    }
+  ],
+  "functions": {
+    "api/generate.py": {
+      "runtime": "python3.12"
+    }
+  },
+  "env": {
+    "GROQ_API_KEY": "@groq_api_key"
+  }
+}
