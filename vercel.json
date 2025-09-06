@@ -16,11 +16,6 @@
       "dest": "api/generate.py"
     }
   ],
-  "functions": {
-    "api/generate.py": {
-      "runtime": "python3.12"
-    }
-  },
   "env": {
     "GROQ_API_KEY": "@groq_api_key"
   }
