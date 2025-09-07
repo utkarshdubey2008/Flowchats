@@ -2,18 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/generate.py",
+      "src": "app.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
-      "src": "/generate",
-      "dest": "api/generate.py"
-    },
-    {
-      "src": "/api/generate",
-      "dest": "api/generate.py"
+      "src": "/generate/(pdf|ppt)/",
+      "dest": "app.py"
     }
   ]
 }
