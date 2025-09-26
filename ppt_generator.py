@@ -5,9 +5,28 @@ import io
 import textwrap
 from design_elements import COLOR_SCHEMES, ICON_FUNCTIONS, create_gradient_background, add_decorative_elements, create_title_banner
 
+def setup_high_quality_rendering():
+    """Configure matplotlib for high-quality text rendering"""
+    plt.rcParams.update({
+        'text.antialiased': True,
+        'font.family': 'sans-serif',
+        'font.sans-serif': ['Arial', 'DejaVu Sans', 'Liberation Sans'],
+        'axes.unicode_minus': False,
+        'svg.fonttype': 'none',
+        'pdf.fonttype': 42,
+        'ps.fonttype': 42,
+        'figure.dpi': 150,
+        'savefig.dpi': 600,
+        'savefig.format': 'png',
+        'savefig.bbox': 'tight',
+        'savefig.pad_inches': 0.1
+    })
+
 def create_title_slide(slide_data, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -31,8 +50,10 @@ def create_title_slide(slide_data, theme='professional'):
     return fig
 
 def create_definition_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -76,8 +97,10 @@ def create_definition_slide(slide_data, slide_num, theme='professional'):
     return fig
 
 def create_use_cases_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -113,8 +136,10 @@ def create_use_cases_slide(slide_data, slide_num, theme='professional'):
     return fig
 
 def create_examples_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -166,8 +191,10 @@ def create_examples_slide(slide_data, slide_num, theme='professional'):
     return fig
 
 def create_benefits_challenges_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -202,8 +229,10 @@ def create_benefits_challenges_slide(slide_data, slide_num, theme='professional'
     return fig
 
 def create_detailed_content_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -243,8 +272,10 @@ def create_detailed_content_slide(slide_data, slide_num, theme='professional'):
     return fig
 
 def create_conclusion_slide(slide_data, slide_num, theme='professional'):
+    setup_high_quality_rendering()
     colors = COLOR_SCHEMES[theme]
     fig, ax = plt.subplots(figsize=(16, 9))
+    fig.set_dpi(150)
     ax.set_xlim(0, 10)
     ax.set_ylim(0, 10)
     ax.axis('off')
@@ -338,7 +369,9 @@ def convert_slides_to_images(slides):
     image_buffers = []
     for slide in slides:
         buf = io.BytesIO()
-        slide.savefig(buf, format='png', dpi=300, bbox_inches='tight', facecolor='white', edgecolor='none')
+        slide.savefig(buf, format='png', dpi=600, bbox_inches='tight', 
+                     facecolor='white', edgecolor='none', 
+                     pil_kwargs={'optimize': True, 'quality': 95})
         buf.seek(0)
         image_buffers.append(buf)
         plt.close(slide)
